@@ -14,7 +14,8 @@ import os
 from factory import create_app, db
 from seed import seed_all
 
-
+env = os.environ.get("FLASK_ENV", "development")
+app = create_app(env)
 
 with app.app_context():
     db.create_all()
