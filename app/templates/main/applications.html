@@ -1,0 +1,60 @@
+{% extends 'base.html' %}{% block title %}Мои заявления{% endblock %}
+{% block content %}
+<div class="pg-title">Мои заявления</div>
+<div class="pg-sub">Список направлений — расставь приоритеты и управляй статусами</div>
+{% if applications %}
+<div style="display:flex;flex-direction:column;gap:12px">
+{% for a in applications %}
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;
+            border-left:3px solid {% if a.status=='accepted' %}var(--green){% elif a.status=='rejected' %}var(--red){% elif a.status=='submitted' %}var(--accent){% else %}var(--border){% endif %}">
+  <div class="flex ic jb">
+    <div style="flex:1">
+      <div class="flex ic g-2 mb-2">
+        <span style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-family:var(--mono);font-size:11px;color:var(--text3)">#{{ a.priority }}</span>
+        {% if a.status=='draft' %}<span class="bdg b-gy">Черновик</span>
+        {% elif a.status=='submitted' %}<span class="bdg b-bl">Подано</span>
+        {% elif a.status=='accepted' %}<span class="bdg b-gr">Принято</span>
+        {% else %}<span class="bdg b-rd">Отклонено</span>{% endif %}
+        <span class="bdg b-gy">{{ a.university.short_name }}</span>
+      </div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:3px">{{ a.program.name }}</div>
+      <div class="tx tm">{{ a.program.code }} · {{ a.program.subjects }} · Бюджет: {{ a.program.budget_places }}</div>
+      <div class="flex ic g-3 mt-3">
+        <div><div class="tx td">Мой балл</div>
+          <div class="fm fb" style="font-size:18px;color:{% if a.total_score>=a.program.min_score %}var(--green){% else %}var(--red){% endif %}">{{ a.total_score }}</div></div>
+        <div style="color:var(--text3)">/</div>
+        <div><div class="tx td">Мин. балл</div><div class="fm fb" style="font-size:18px">{{ a.program.min_score }}</div></div>
+        <span class="bdg {% if a.total_score>=a.program.min_score %}b-gr{% else %}b-rd{% endif %}">
+          {{ '+' if a.total_score>=a.program.min_score else '' }}{{ a.total_score-a.program.min_score }} {% if a.total_score>=a.program.min_score %}запас{% else %}не хватает{% endif %}
+        </span>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;min-width:170px;margin-left:16px">
+      <form method="POST" action="{{ url_for('main.update_status', app_id=a.id) }}">
+        <select name="status" class="fc" style="font-size:12px;padding:7px 10px;margin-bottom:5px" onchange="this.form.submit()">
+          <option value="draft" {% if a.status=='draft' %}selected{% endif %}>Черновик</option>
+          <option value="submitted" {% if a.status=='submitted' %}selected{% endif %}>Подано</option>
+          <option value="accepted" {% if a.status=='accepted' %}selected{% endif %}>Принято</option>
+          <option value="rejected" {% if a.status=='rejected' %}selected{% endif %}>Отклонено</option>
+        </select>
+      </form>
+      <form method="POST" action="{{ url_for('main.delete_application', app_id=a.id) }}" onsubmit="return confirm('Удалить?')">
+        <button type="submit" class="btn btn-d btn-sm" style="width:100%;justify-content:center">🗑 Удалить</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+<div class="card mt-4"><div class="card-title">Сводка</div>
+  <div class="g4">
+    <div><div class="tx td">Всего</div><div class="fm fb" style="font-size:24px">{{ applications|length }}</div></div>
+    <div><div class="tx td">Подано</div><div class="fm fb" style="font-size:24px;color:var(--accent)">{{ applications|selectattr('status','eq','submitted')|list|length }}</div></div>
+    <div><div class="tx td">Принято</div><div class="fm fb" style="font-size:24px;color:var(--green)">{{ applications|selectattr('status','eq','accepted')|list|length }}</div></div>
+    <div><div class="tx td">Отклонено</div><div class="fm fb" style="font-size:24px;color:var(--red)">{{ applications|selectattr('status','eq','rejected')|list|length }}</div></div>
+  </div>
+</div>
+{% else %}
+<div class="es"><div class="ei">📋</div><p><a href="{{ url_for('main.universities') }}" style="color:var(--accent)">Перейди в Вузы и добавь направления →</a></p></div>
+{% endif %}
+{% endblock %}

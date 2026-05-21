@@ -1,0 +1,43 @@
+{% extends 'base.html' %}{% block title %}Сроки{% endblock %}
+{% block content %}
+<div class="pg-title">Календарь сроков</div>
+<div class="pg-sub">Не пропусти важные даты приёмной кампании</div>
+<div class="flex g-2 mb-4" style="flex-wrap:wrap">
+  <span class="dlp urgent">🔴 Срочно (≤7 дн.)</span>
+  <span class="dlp soon">🟡 Скоро (≤21 дн.)</span>
+  <span class="dlp ok">🟢 Успеваем</span>
+  <span class="dlp passed">⚪ Прошло</span>
+</div>
+<div style="display:flex;flex-direction:column;gap:14px">
+{% for uni_name, dls in by_uni.items() %}
+{% set is_mine = dls[0].university.id in user_uni_ids %}
+<div class="card" style="padding:0;overflow:hidden{% if is_mine %};border-color:rgba(91,143,255,.3){% endif %}">
+  <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+    <span style="font-size:14px;font-weight:700">{{ uni_name }}</span>
+    {% if is_mine %}<span class="bdg b-bl">★ Мой вуз</span>{% endif %}
+    <span class="tx td" style="margin-left:auto">{{ dls[0].university.city }}</span>
+  </div>
+  <div style="padding:6px 20px 14px">
+    <table class="tbl">
+      <thead><tr><th>Событие</th><th>Тип</th><th>Дата</th><th>До дедлайна</th></tr></thead>
+      <tbody>
+      {% for d in dls %}
+      {% set days=(d.deadline_date-today).days %}
+      <tr>
+        <td class="fb ts">{{ d.title }}</td>
+        <td>{% if d.deadline_type=='documents' %}<span class="bdg b-bl">📄 Документы</span>
+          {% elif d.deadline_type=='consent' %}<span class="bdg b-pu">✅ Согласие</span>
+          {% else %}<span class="bdg b-ye">📝 Испытание</span>{% endif %}</td>
+        <td class="fm ts">{{ d.deadline_date.strftime('%d.%m.%Y') }}</td>
+        <td><span class="dlp {% if days<0 %}passed{% elif days<=7 %}urgent{% elif days<=21 %}soon{% else %}ok{% endif %}">
+          {% if days<0 %}{{ -days }} дн. назад{% elif days==0 %}сегодня!{% elif days==1 %}завтра{% else %}{{ days }} дней{% endif %}
+        </span></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}<div class="es"><div class="ei">📅</div><p>Нет данных</p></div>{% endfor %}
+</div>
+{% endblock %}

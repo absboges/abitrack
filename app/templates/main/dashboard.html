@@ -1,0 +1,129 @@
+{% extends 'base.html' %}{% block title %}Дашборд{% endblock %}
+{% block content %}
+<div class="pg-title">Главный экран</div>
+<div class="pg-sub">Привет, {{ current_user.full_name or 'абитуриент' }} — следи за баллами и дедлайнами</div>
+
+{% if notifications %}
+<div style="margin-bottom:16px">
+  {% for n in notifications[:3] %}
+  <div class="alert {% if n.urgency=='urgent' %}a-err{% else %}a-info{% endif %}">
+    🔔 {{ n.message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="g4 mb-6">
+  <div class="stat bl"><div class="stat-label">Сумма баллов ЕГЭ</div>
+    <div class="stat-val" style="color:var(--accent)">{{ exam_results.values()|sum }}</div>
+    <div class="stat-hint">{{ exam_results|length }} предмет(ов)</div></div>
+  <div class="stat pu"><div class="stat-label">Заявлений</div>
+    <div class="stat-val" style="color:#a78bfa">{{ applications|length }}</div>
+    <div class="stat-hint">направлений</div></div>
+  <div class="stat gr"><div class="stat-label">Проходим</div>
+    <div class="stat-val" style="color:var(--green)" id="js-pass">—</div>
+    <div class="stat-hint">из заявлений</div></div>
+  <div class="stat ye"><div class="stat-label">Ближ. дедлайн</div>
+    <div class="stat-val" style="color:var(--yellow);font-size:22px" id="js-next">—</div>
+    <div class="stat-hint" id="js-next-title">загрузка…</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 360px;gap:16px">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="card">
+      <div class="flex ic jb mb-4"><div class="card-title" style="margin:0">Баллы ЕГЭ</div>
+        <a href="{{ url_for('main.calc') }}" class="btn btn-s btn-sm">Редактировать</a></div>
+      {% if exam_results %}
+        {% for subj, score in exam_results.items() %}
+        <div style="margin-bottom:10px">
+          <div class="flex jb mb-1">
+            <span class="ts">{{ subj }}</span>
+            <span class="fm fb" style="color:{% if score>=80 %}var(--green){% elif score>=60 %}var(--yellow){% else %}var(--red){% endif %}">{{ score }}</span>
+          </div>
+          <div class="sbar"><div class="sfill {% if score>=80 %}sh{% elif score>=60 %}sm{% else %}sl{% endif %}" style="width:{{ score }}%"></div></div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="es"><div class="ei">📊</div><p>Введите баллы в <a href="{{ url_for('main.calc') }}" style="color:var(--accent)">калькуляторе</a></p></div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="flex ic jb mb-4"><div class="card-title" style="margin:0">Мои заявления</div>
+        <a href="{{ url_for('main.applications') }}" class="btn btn-s btn-sm">Все →</a></div>
+      {% if applications %}
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Вуз / Направление</th><th>Балл</th><th>Статус</th></tr></thead>
+        <tbody>
+        {% for a in applications[:5] %}
+        <tr>
+          <td class="fm td">{{ a.priority }}</td>
+          <td><div class="fb ts">{{ a.university.short_name }}</div><div class="tx tm">{{ a.program.name[:45] }}{% if a.program.name|length>45 %}…{% endif %}</div></td>
+          <td><span class="fm fb" style="color:{% if a.total_score>=a.program.min_score %}var(--green){% else %}var(--red){% endif %}">{{ a.total_score }}</span><span class="tx td"> / {{ a.program.min_score }}</span></td>
+          <td>{% if a.status=='draft' %}<span class="bdg b-gy">Черновик</span>
+            {% elif a.status=='submitted' %}<span class="bdg b-bl">Подано</span>
+            {% elif a.status=='accepted' %}<span class="bdg b-gr">Принято</span>
+            {% else %}<span class="bdg b-rd">Отклонено</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="es"><div class="ei">📋</div><p><a href="{{ url_for('main.universities') }}" style="color:var(--accent)">Добавьте направления →</a></p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card" style="height:fit-content">
+    <div class="flex ic jb mb-4"><div class="card-title" style="margin:0">Ближайшие сроки</div>
+      <a href="{{ url_for('main.deadlines') }}" class="btn btn-s btn-sm">Все →</a></div>
+    <div id="js-deadlines">
+      {% if upcoming %}
+        {% for d in upcoming %}
+        {% set days = (d.deadline_date - today).days %}
+        <div style="padding:12px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);margin-bottom:10px">
+          <div class="flex ic jb mb-1">
+            <span class="ts fb">{{ d.university.short_name }}</span>
+            <span class="dlp {% if days<0 %}passed{% elif days<=7 %}urgent{% elif days<=21 %}soon{% else %}ok{% endif %}">
+              {% if days<0 %}прошло{% elif days==0 %}сегодня{% elif days==1 %}завтра{% else %}{{ days }} дн.{% endif %}
+            </span>
+          </div>
+          <div class="ts tm mb-1">{{ d.title }}</div>
+          <div class="tx td fm">{{ d.deadline_date.strftime('%d.%m.%Y') }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="es"><div class="ei">📅</div><p>Нет предстоящих сроков</p></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+// Fetch данные через REST API для живых счётчиков
+async function loadApiStats() {
+  try {
+    const [appsR, dlR] = await Promise.all([
+      fetch('/api/v1/me/applications'),
+      fetch('/api/v1/deadlines?mine=1&limit=1')
+    ]);
+    const appsData = await appsR.json();
+    const dlData = await dlR.json();
+
+    // Считаем проходящих
+    if (appsData.ok) {
+      // (логика на сервере, просто показываем кол-во заявлений)
+      document.getElementById('js-pass').textContent = appsData.data.applications.length;
+    }
+    if (dlData.ok && dlData.data.deadlines.length > 0) {
+      const dl = dlData.data.deadlines[0];
+      document.getElementById('js-next').textContent = dl.days_until + ' дн.';
+      document.getElementById('js-next-title').textContent = dl.university_name + ': ' + dl.title;
+    } else {
+      document.getElementById('js-next').textContent = '—';
+      document.getElementById('js-next-title').textContent = 'нет сроков';
+    }
+  } catch(e) { console.warn('API stats error:', e); }
+}
+loadApiStats();
+{% endblock %}

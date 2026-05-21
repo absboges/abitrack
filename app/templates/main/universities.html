@@ -1,0 +1,46 @@
+{% extends 'base.html' %}{% block title %}Вузы{% endblock %}
+{% block content %}
+<div class="pg-title">Вузы и программы</div>
+<div class="pg-sub">Найди направление и добавь в список заявлений</div>
+<form method="GET" style="margin-bottom:18px">
+  <div style="position:relative;max-width:400px">
+    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3)">🔍</span>
+    <input class="fc" style="padding-left:36px" type="text" name="q" value="{{ query }}" placeholder="Поиск вуза…">
+  </div>
+</form>
+<div style="display:flex;flex-direction:column;gap:14px">
+{% for uni in universities %}
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="flex ic g-2 mb-1">
+        <span style="font-size:16px;font-weight:800">{{ uni.short_name or uni.name[:25] }}</span>
+        <span class="bdg b-gy">{{ uni.city }}</span>
+      </div>
+      <div class="ts tm">{{ uni.name }}</div>
+    </div>
+    {% if uni.website %}<a href="{{ uni.website }}" target="_blank" class="btn btn-s btn-sm">Сайт ↗</a>{% endif %}
+  </div>
+  <div style="padding:8px 22px 14px">
+    <table class="tbl">
+      <thead><tr><th>Направление</th><th>Код</th><th>Предметы ЕГЭ</th><th>Бюджет</th><th>Мин. балл</th><th></th></tr></thead>
+      <tbody>
+      {% for prog in uni.programs %}
+      <tr>
+        <td><div class="fb ts">{{ prog.name }}</div></td>
+        <td><span class="fm tx tm">{{ prog.code }}</span></td>
+        <td>{% for s in prog.subject_list %}<span class="bdg b-bl" style="margin:1px">{{ s }}</span>{% endfor %}</td>
+        <td><span class="fm fb">{{ prog.budget_places }}</span><span class="tx td"> мест</span></td>
+        <td><span class="fm fb">{{ prog.min_score }}</span></td>
+        <td>{% if prog.id in user_app_program_ids %}<span class="bdg b-gr">✓ Добавлено</span>
+          {% else %}<form method="POST" action="{{ url_for('main.add_application', program_id=prog.id) }}">
+            <button class="btn btn-p btn-xs" type="submit">+ В список</button></form>{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}<div class="es"><div class="ei">🏛</div><p>Вузы не найдены</p></div>{% endfor %}
+</div>
+{% endblock %}

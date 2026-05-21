@@ -1,0 +1,384 @@
+@startuml class_diagram
+title АбиТрек — Диаграмма классов (UML)
+
+skinparam classBackgroundColor #1c2030
+skinparam classBorderColor #5b8fff
+skinparam ArrowColor #5b8fff
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #0d0f14
+skinparam FontColor #e8eaf0
+
+' ── MODELS ────────────────────────────────────────────────────────────────────
+
+class User {
+  +id: Integer
+  +email: String
+  -password_hash: String
+  +full_name: String
+  +phone: String
+  +role: String
+  +created_at: DateTime
+  --
+  +set_password(password: str): void
+  +check_password(password: str): bool
+  +is_admin: bool <<property>>
+  +total_exam_score: int <<property>>
+  +to_dict(): dict
+}
+
+class University {
+  +id: Integer
+  +name: String
+  +short_name: String
+  +city: String
+  +description: Text
+  +website: String
+  --
+  +to_dict(): dict
+}
+
+class Program {
+  +id: Integer
+  +university_id: Integer <<FK>>
+  +name: String
+  +code: String
+  +field: String
+  +budget_places: Integer
+  +paid_places: Integer
+  +min_score: Integer
+  +subjects: String
+  --
+  +subject_list: List[str] <<property>>
+  +to_dict(): dict
+}
+
+class ExamResult {
+  +id: Integer
+  +user_id: Integer <<FK>>
+  +subject: String
+  +score: Integer
+  --
+  +to_dict(): dict
+}
+
+class Application {
+  +id: Integer
+  +user_id: Integer <<FK>>
+  +university_id: Integer <<FK>>
+  +program_id: Integer <<FK>>
+  +priority: Integer
+  +total_score: Integer
+  +individual_score: Integer
+  +status: String
+  +comment: Text
+  +created_at: DateTime
+  +updated_at: DateTime
+  --
+  +to_dict(): dict
+}
+
+class Deadline {
+  +id: Integer
+  +university_id: Integer <<FK>>
+  +title: String
+  +deadline_type: String
+  +deadline_date: Date
+  +description: Text
+  --
+  +days_until: int <<property>>
+  +urgency_class: str <<property>>
+  +to_dict(): dict
+}
+
+' ── SERVICES ──────────────────────────────────────────────────────────────────
+
+class UserService <<Service>> {
+  +create(email, password, full_name, role): User
+  +authenticate(email, password): Optional[User]
+  +update_profile(user, ...): User
+  +save_exam_results(user, scores): List[ExamResult]
+}
+
+class ApplicationService <<Service>> {
+  -_calculator: ScoreCalculator
+  +add(user, program_id, individual_score): Application
+  +update_status(app_id, user_id, status): Application
+  +delete(app_id, user_id): void
+  +get_user_applications(user_id): List[Application]
+}
+
+class DeadlineService <<Service>> {
+  +get_upcoming(university_ids, limit): List[Deadline]
+}
+
+' ── ПАТТЕРН СТРАТЕГИЯ ────────────────────────────────────────────────────────
+
+abstract class ScoreStrategy <<abstract>> {
+  +{abstract} calculate(exam_results, subjects, individual, min_score): ScoreResult
+}
+
+class StandardScoreStrategy {
+  +calculate(...): ScoreResult
+}
+
+class OlympiadScoreStrategy {
+  -_olympiad_subject: String
+  +calculate(...): ScoreResult
+}
+
+class ScoreCalculator <<Context>> {
+  -_strategy: ScoreStrategy
+  +set_strategy(strategy): void
+  +calculate_for_program(...): ScoreResult
+  +rank_programs(...): List[dict]
+}
+
+class ScoreResult <<DataClass>> {
+  +exam_score: int
+  +individual_score: int
+  +total_score: int
+  +missing_subjects: List[str]
+  +can_apply: bool
+  +score_gap: int
+  --
+  +to_dict(): dict
+}
+
+' ── ПАТТЕРН НАБЛЮДАТЕЛЬ ──────────────────────────────────────────────────────
+
+abstract class DeadlineObserver <<abstract>> {
+  +{abstract} on_deadline_event(event): void
+}
+
+class LoggingObserver {
+  +on_deadline_event(event): void
+}
+
+class InAppNotifyObserver {
+  -_notifications: List[dict]
+  +on_deadline_event(event): void
+  +get_notifications(email): List[dict]
+  +clear(email): void
+}
+
+class DeadlineEventEmitter <<Subject>> {
+  -_observers: List[DeadlineObserver]
+  +subscribe(observer): void
+  +unsubscribe(observer): void
+  +notify(event): void
+  +check_deadlines(email, deadlines): void
+}
+
+class DeadlineEvent <<DataClass>> {
+  +university_name: String
+  +deadline_title: String
+  +deadline_date: Date
+  +days_until: int
+  +user_email: String
+}
+
+' ── RELATIONS ─────────────────────────────────────────────────────────────────
+
+User "1" o-- "0..*" ExamResult : has
+User "1" o-- "0..*" Application : submits
+University "1" *-- "1..*" Program : offers
+University "1" *-- "0..*" Deadline : has
+Application "0..*" --> "1" Program
+Application "0..*" --> "1" University
+
+UserService ..> User : creates/authenticates
+ApplicationService ..> Application : manages
+ApplicationService --> ScoreCalculator : uses
+DeadlineService ..> Deadline : queries
+
+ScoreCalculator --> ScoreStrategy : delegates
+ScoreStrategy <|-- StandardScoreStrategy
+ScoreStrategy <|-- OlympiadScoreStrategy
+ScoreCalculator ..> ScoreResult : returns
+
+DeadlineObserver <|-- LoggingObserver
+DeadlineObserver <|-- InAppNotifyObserver
+DeadlineEventEmitter o-- "0..*" DeadlineObserver
+DeadlineEventEmitter ..> DeadlineEvent : emits
+
+@enduml
+
+
+@startuml db_diagram
+title АбиТрек — Схема базы данных (ER-диаграмма)
+
+skinparam backgroundColor #0d0f14
+skinparam EntityBackgroundColor #1c2030
+skinparam EntityBorderColor #5b8fff
+skinparam ArrowColor #5b8fff
+skinparam FontColor #e8eaf0
+
+entity "users" as U {
+  * id : INTEGER <<PK>>
+  --
+  * email : VARCHAR(150) <<UNIQUE>>
+  * password_hash : VARCHAR(256)
+  full_name : VARCHAR(200)
+  phone : VARCHAR(30)
+  * role : VARCHAR(20)
+  created_at : TIMESTAMP
+}
+
+entity "universities" as UN {
+  * id : INTEGER <<PK>>
+  --
+  * name : VARCHAR(400)
+  short_name : VARCHAR(60)
+  city : VARCHAR(100)
+  description : TEXT
+  website : VARCHAR(200)
+}
+
+entity "programs" as P {
+  * id : INTEGER <<PK>>
+  --
+  * university_id : INTEGER <<FK>>
+  * name : VARCHAR(300)
+  code : VARCHAR(20)
+  field : VARCHAR(100)
+  budget_places : INTEGER
+  paid_places : INTEGER
+  min_score : INTEGER
+  subjects : VARCHAR(300)
+}
+
+entity "exam_results" as ER {
+  * id : INTEGER <<PK>>
+  --
+  * user_id : INTEGER <<FK>>
+  * subject : VARCHAR(100)
+  * score : INTEGER
+}
+
+entity "applications" as A {
+  * id : INTEGER <<PK>>
+  --
+  * user_id : INTEGER <<FK>>
+  * university_id : INTEGER <<FK>>
+  * program_id : INTEGER <<FK>>
+  * priority : INTEGER
+  * total_score : INTEGER
+  individual_score : INTEGER
+  status : VARCHAR(20)
+  comment : TEXT
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "deadlines" as D {
+  * id : INTEGER <<PK>>
+  --
+  * university_id : INTEGER <<FK>>
+  * title : VARCHAR(200)
+  deadline_type : VARCHAR(50)
+  * deadline_date : DATE
+  description : TEXT
+}
+
+U ||--o{ ER : "user_id"
+U ||--o{ A : "user_id"
+UN ||--|{ P : "university_id"
+UN ||--o{ D : "university_id"
+UN ||--o{ A : "university_id"
+P ||--o{ A : "program_id"
+
+@enduml
+
+
+@startuml usecase_diagram
+title АбиТрек — Диаграмма вариантов использования (Use Case)
+
+skinparam backgroundColor #0d0f14
+skinparam ActorBackgroundColor #1c2030
+skinparam ActorBorderColor #5b8fff
+skinparam UsecaseBackgroundColor #1c2030
+skinparam UsecaseBorderColor #252a3a
+skinparam ArrowColor #5b8fff
+skinparam FontColor #e8eaf0
+
+left to right direction
+
+actor "Абитуриент" as Applicant
+actor "Родитель" as Parent
+actor "Администратор" as Admin
+
+rectangle "Информационная система абитуриента" {
+  usecase "Зарегистрироваться / войти" as UC1
+  usecase "Ввести результаты ЕГЭ" as UC2
+  usecase "Рассчитать конкурсный балл" as UC3
+  usecase "Просмотреть программы" as UC4
+  usecase "Добавить заявление" as UC5
+  usecase "Управлять статусами заявлений" as UC6
+  usecase "Отслеживать сроки" as UC7
+  usecase "Получать уведомления" as UC8
+  usecase "Редактировать профиль" as UC9
+  usecase "Использовать REST API" as UC10
+
+  usecase "Управлять вузами и программами" as UC11
+  usecase "Управлять пользователями" as UC12
+  usecase "Добавлять дедлайны" as UC13
+}
+
+Applicant --> UC1
+Applicant --> UC2
+Applicant --> UC3
+Applicant --> UC4
+Applicant --> UC5
+Applicant --> UC6
+Applicant --> UC7
+Applicant --> UC8
+Applicant --> UC9
+Applicant --> UC10
+
+Parent --> UC1
+Parent --> UC4
+Parent --> UC7
+
+Admin --> UC1
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+
+UC3 .> UC2 : <<include>>
+UC5 .> UC3 : <<include>>
+UC8 .> UC7 : <<include>>
+
+@enduml
+
+
+@startuml sequence_diagram
+title АбиТрек — Sequence: Расчёт конкурсного балла через REST API
+
+skinparam backgroundColor #0d0f14
+skinparam SequenceBoxBackgroundColor #1c2030
+skinparam SequenceBoxBorderColor #5b8fff
+skinparam ArrowColor #5b8fff
+skinparam FontColor #e8eaf0
+skinparam ParticipantBackgroundColor #1c2030
+skinparam ParticipantBorderColor #5b8fff
+
+actor "Браузер (JS)" as JS
+participant "Flask REST API\n/api/v1/calculate" as API
+participant "ScoreCalculator\n(Context)" as Calc
+participant "StandardScoreStrategy" as Strat
+participant "БД\n(SQLite)" as DB
+
+JS -> API : POST /api/v1/calculate\n{program_id: 1, individual_score: 5}
+API -> DB : ExamResult.query.filter_by(user_id=...)
+DB --> API : [Математика:85, Информатика:90, Русский:78]
+API -> DB : Program.query.get(1)
+DB --> API : Program(min_score=220, subjects=[...])
+API -> Calc : calculate_for_program(results, subjects, 5, 220)
+Calc -> Strat : calculate(results, subjects, 5, 220)
+note right of Strat: Stotal = Σ Ei + Bind\n= (85+90+78) + 5 = 258
+Strat --> Calc : ScoreResult(total=258, can_apply=True, gap=+38)
+Calc --> API : ScoreResult
+API --> JS : 200 OK\n{"ok":true,"data":{"total_score":258,"can_apply":true}}
+JS -> JS : Обновить DOM (score, цвет кнопки)
+
+@enduml

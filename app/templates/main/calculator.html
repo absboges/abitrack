@@ -1,0 +1,127 @@
+{% extends 'base.html' %}{% block title %}Калькулятор ЕГЭ{% endblock %}
+{% block content %}
+<div class="pg-title">Калькулятор ЕГЭ</div>
+<div class="pg-sub">Введите баллы — система рассчитает конкурсный балл и покажет подходящие направления</div>
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start">
+  <div>
+    <div class="card">
+      <div class="card-title">Результаты ЕГЭ</div>
+      <form method="POST" id="examForm">
+        {% for subj in subjects %}
+        <div class="fg" style="margin-bottom:10px">
+          <label class="fl">{{ subj }}</label>
+          <input class="fc score-inp" type="number" name="score_{{ subj }}" min="0" max="100"
+                 placeholder="0–100" value="{{ exam_results.get(subj,'') }}" data-subj="{{ subj }}">
+        </div>
+        {% endfor %}
+        <hr class="dv">
+        <div class="flex ic jb mb-4">
+          <span class="ts tm">Сумма всех баллов</span>
+          <span class="fm fb" style="font-size:20px;color:var(--accent)" id="liveTotal">{{ total }}</span>
+        </div>
+        <button type="submit" class="btn btn-p btn-w">Сохранить и пересчитать</button>
+      </form>
+    </div>
+    <div class="card mt-4">
+      <div class="card-title">Индивидуальные достижения</div>
+      <p class="ts tm mb-3">Добавляются к конкурсному баллу (до 10 баллов)</p>
+      <input class="fc" type="number" id="indScore" min="0" max="10" placeholder="0–10" value="{{ individual }}">
+      <button class="btn btn-s btn-sm mt-3" onclick="recalcLive()">Пересчитать</button>
+    </div>
+  </div>
+  <div>
+    {% if ranked %}
+    <div class="flex ic jb mb-3">
+      <div><div class="fb ts">Подходящие направления</div>
+        <div class="tx tm">{{ ranked|selectattr('result.can_apply')|list|length }} из {{ ranked|length }} доступны</div></div>
+      <div class="flex g-2">
+        <span class="bdg b-gr">✓ Доступно</span>
+        <span class="bdg b-rd">✗ Не хватает баллов</span>
+      </div>
+    </div>
+    <div id="rankList" style="display:flex;flex-direction:column;gap:10px">
+    {% for item in ranked %}
+    {% set r = item.result %}
+    {% set p = item.program %}
+    <div class="prog-card" data-prog="{{ p.id }}" data-min="{{ p.min_score }}"
+         style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;
+                border-left:3px solid {% if r.can_apply %}var(--green){% else %}var(--red){% endif %}">
+      <div class="flex ic jb">
+        <div style="flex:1">
+          <div class="flex g-2 mb-1">
+            <span class="bdg {% if r.can_apply %}b-gr{% else %}b-rd{% endif %}">{% if r.can_apply %}✓{% else %}✗{% endif %}</span>
+            <span class="bdg b-gy">{{ p.university.short_name }}</span>
+          </div>
+          <div class="fb ts mb-1">{{ p.name }}</div>
+          <div class="tx tm">{{ p.subjects }} · Бюджет: {{ p.budget_places }} мест · Мин. балл: {{ p.min_score }}</div>
+          {% if r.missing_subjects %}
+          <div class="tx" style="color:var(--red);margin-top:4px">Не хватает: {{ r.missing_subjects|join(', ') }}</div>
+          {% endif %}
+        </div>
+        <div style="text-align:right;margin-left:14px">
+          <div class="fm fb prog-score" data-base="{{ r.exam_score }}"
+               style="font-size:22px;color:{% if r.can_apply %}var(--green){% else %}var(--red){% endif %}">{{ r.total_score }}</div>
+          <div class="tx td">мин. {{ p.min_score }}</div>
+          <div class="tx prog-gap {% if r.score_gap>=0 %}{% else %}{% endif %}"
+               style="color:{% if r.score_gap>=0 %}var(--green){% else %}var(--red){% endif %}">
+            {{ '+' if r.score_gap>=0 else '' }}{{ r.score_gap }}
+          </div>
+        </div>
+      </div>
+      {% if r.can_apply %}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <form method="POST" action="{{ url_for('main.add_application', program_id=p.id) }}" style="display:inline">
+          <input type="hidden" name="individual" class="ind-hidden" value="{{ individual }}">
+          <button type="submit" class="btn btn-g btn-xs">+ В мой список</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    </div>
+    {% elif exam_results %}
+    <div class="es"><div class="ei">🔍</div><p>Нет программ с этими баллами</p></div>
+    {% else %}
+    <div class="es"><div class="ei">✏️</div><p>Введите баллы ЕГЭ слева,<br>чтобы увидеть подходящие программы</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+const inputs = document.querySelectorAll('.score-inp');
+const liveTotal = document.getElementById('liveTotal');
+const indInput = document.getElementById('indScore');
+
+function calcTotal(){
+  let s=0;inputs.forEach(i=>{const v=parseInt(i.value)||0;s+=Math.min(100,Math.max(0,v));});
+  return s;
+}
+function recalcLive(){
+  if(liveTotal) liveTotal.textContent = calcTotal();
+  const ind = parseInt(indInput?.value)||0;
+  document.querySelectorAll('.ind-hidden').forEach(el=>el.value=ind);
+  // Live update scores via REST API
+  document.querySelectorAll('.prog-card').forEach(async card => {
+    const progId = card.dataset.prog;
+    const min = parseInt(card.dataset.min);
+    try {
+      const res = await fetch('/api/v1/calculate', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({program_id: parseInt(progId), individual_score: ind})
+      });
+      const data = await res.json();
+      if(data.ok){
+        const r = data.data;
+        const scoreEl = card.querySelector('.prog-score');
+        const gapEl = card.querySelector('.prog-gap');
+        if(scoreEl){ scoreEl.textContent = r.total_score;
+          scoreEl.style.color = r.can_apply?'var(--green)':'var(--red)'; }
+        if(gapEl){ gapEl.textContent=(r.score_gap>=0?'+':'')+r.score_gap;
+          gapEl.style.color=r.score_gap>=0?'var(--green)':'var(--red)'; }
+      }
+    } catch(e){}
+  });
+}
+inputs.forEach(i=>i.addEventListener('input', recalcLive));
+if(indInput) indInput.addEventListener('input', recalcLive);
+{% endblock %}

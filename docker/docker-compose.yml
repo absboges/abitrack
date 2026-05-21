@@ -1,0 +1,33 @@
+version: "3.9"
+
+# docker-compose для локальной разработки АбиТрек
+# Запуск: docker-compose up --build
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: abitrack_web
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - SECRET_KEY=change-me-in-production
+      - DATABASE_URL=sqlite:////app/instance/abitrack.db
+    volumes:
+      # Монтируем код для live-reload в development
+      - ..:/app
+      # Персистентное хранение БД
+      - abitrack_db:/app/instance
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  abitrack_db:
+    driver: local

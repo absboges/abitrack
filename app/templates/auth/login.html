@@ -1,0 +1,38 @@
+{% extends 'base.html' %}{% block title %}Вход{% endblock %}
+{% block auth_content %}
+<style>
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.auth-box{width:100%;max-width:390px;padding:16px}
+.auth-logo{text-align:center;margin-bottom:28px}
+.auth-mark{font-size:30px;font-weight:900;letter-spacing:-1px;color:var(--accent)}
+.auth-sub{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;margin-top:3px}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:30px}
+.auth-title{font-size:19px;font-weight:700;margin-bottom:3px}
+.auth-hint{font-size:13px;color:var(--text2);margin-bottom:22px}
+.auth-foot{text-align:center;margin-top:18px;font-size:13px;color:var(--text3)}
+.auth-foot a{color:var(--accent);text-decoration:none;font-weight:600}
+.demo-box{margin-top:10px;padding:8px 12px;background:var(--surface2);border-radius:7px;font-size:11px;color:var(--text3);text-align:center;font-family:var(--mono)}
+</style>
+<div class="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-mark">АбиТрек</div>
+      <div class="auth-sub">Информационная система абитуриента</div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-title">Добро пожаловать</div>
+      <div class="auth-hint">Войдите в свой аккаунт</div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}<div class="alert a-err">{{ msg }}</div>{% endfor %}
+      {% endwith %}
+      <form method="POST">
+        <div class="fg"><label class="fl">Email</label><input class="fc" type="email" name="email" placeholder="you@example.com" required autofocus></div>
+        <div class="fg" style="margin-bottom:20px"><label class="fl">Пароль</label><input class="fc" type="password" name="password" placeholder="••••••••" required></div>
+        <button type="submit" class="btn btn-p btn-w">Войти →</button>
+      </form>
+      <div class="demo-box">admin@mospolytech.ru / admin123</div>
+    </div>
+    <div class="auth-foot">Нет аккаунта? <a href="{{ url_for('auth.register') }}">Зарегистрироваться</a></div>
+  </div>
+</div>
+{% endblock %}

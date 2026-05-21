@@ -1,0 +1,91 @@
+{% extends 'base.html' %}{% block title %}Администрирование{% endblock %}
+{% block content %}
+<div class="pg-title">Администрирование</div>
+<div class="pg-sub">Управление вузами, программами, сроками и пользователями</div>
+<div class="g4 mb-4">
+  <div class="stat bl"><div class="stat-label">Вузов</div><div class="stat-val" style="color:var(--accent)">{{ universities|length }}</div></div>
+  <div class="stat pu"><div class="stat-label">Программ</div>
+    <div class="stat-val" style="color:#a78bfa">{{ universities|map(attribute='programs')|map('length')|sum }}</div></div>
+  <div class="stat gr"><div class="stat-label">Пользователей</div><div class="stat-val" style="color:var(--green)">{{ users|length }}</div></div>
+  <div class="stat ye"><div class="stat-label">Дедлайнов</div><div class="stat-val" style="color:var(--yellow)">{{ deadlines|length }}</div></div>
+</div>
+<div class="g2" style="gap:16px;align-items:start">
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="card"><div class="card-title">Добавить вуз</div>
+      <form method="POST" action="{{ url_for('admin.add_university') }}">
+        <div class="fg"><label class="fl">Полное название *</label><input class="fc" name="name" required placeholder="Московский..."></div>
+        <div class="fg"><label class="fl">Аббревиатура</label><input class="fc" name="short_name" placeholder="МГУ"></div>
+        <div class="fg"><label class="fl">Город</label><input class="fc" name="city" placeholder="Москва"></div>
+        <div class="fg"><label class="fl">Сайт</label><input class="fc" name="website" placeholder="https://..."></div>
+        <button type="submit" class="btn btn-p">Добавить вуз</button>
+      </form>
+    </div>
+    <div class="card"><div class="card-title">Добавить программу</div>
+      <form method="POST" action="{{ url_for('admin.add_program') }}">
+        <div class="fg"><label class="fl">Вуз *</label>
+          <select class="fc" name="university_id" required>
+            {% for u in universities %}<option value="{{ u.id }}">{{ u.short_name }} — {{ u.name[:40] }}</option>{% endfor %}
+          </select></div>
+        <div class="fg"><label class="fl">Название *</label><input class="fc" name="name" required placeholder="Программная инженерия"></div>
+        <div class="fg"><label class="fl">Код</label><input class="fc" name="code" placeholder="09.03.04"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="fg"><label class="fl">Бюджет</label><input class="fc" name="budget_places" type="number" min="0" value="0"></div>
+          <div class="fg"><label class="fl">Платно</label><input class="fc" name="paid_places" type="number" min="0" value="0"></div>
+          <div class="fg"><label class="fl">Мин. балл</label><input class="fc" name="min_score" type="number" min="0" value="0"></div>
+        </div>
+        <div class="fg"><label class="fl">Предметы ЕГЭ (через запятую)</label><input class="fc" name="subjects" placeholder="Математика,Русский язык,Информатика"></div>
+        <button type="submit" class="btn btn-p">Добавить программу</button>
+      </form>
+    </div>
+    <div class="card"><div class="card-title">Добавить срок</div>
+      <form method="POST" action="{{ url_for('admin.add_deadline') }}">
+        <div class="fg"><label class="fl">Вуз *</label>
+          <select class="fc" name="university_id" required>
+            {% for u in universities %}<option value="{{ u.id }}">{{ u.short_name }}</option>{% endfor %}
+          </select></div>
+        <div class="fg"><label class="fl">Название *</label><input class="fc" name="title" required placeholder="Подача документов"></div>
+        <div class="fg"><label class="fl">Тип</label>
+          <select class="fc" name="deadline_type">
+            <option value="documents">Документы</option>
+            <option value="consent">Согласие</option>
+            <option value="exam">Испытание</option>
+          </select></div>
+        <div class="fg"><label class="fl">Дата *</label><input class="fc" name="deadline_date" type="date" required></div>
+        <div class="fg"><label class="fl">Описание</label><input class="fc" name="description" placeholder="Подробности…"></div>
+        <button type="submit" class="btn btn-p">Добавить срок</button>
+      </form>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="card"><div class="card-title">Пользователи ({{ users|length }})</div>
+      <table class="tbl">
+        <thead><tr><th>ФИО / Email</th><th>Роль</th><th>Заявл.</th><th>Рег.</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+          <td><div class="fb ts">{{ u.full_name or '—' }}</div><div class="tx fm tm">{{ u.email }}</div></td>
+          <td>{% if u.is_admin %}<span class="bdg b-pu">Админ</span>{% else %}<span class="bdg b-bl">Абитур.</span>{% endif %}</td>
+          <td><span class="bdg b-gy">{{ u.applications|length }}</span></td>
+          <td class="tx tm">{{ u.created_at.strftime('%d.%m.%y') }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card"><div class="card-title">Вузы в базе ({{ universities|length }})</div>
+      <table class="tbl">
+        <thead><tr><th>Вуз</th><th>Город</th><th>Программ</th></tr></thead>
+        <tbody>
+        {% for u in universities %}
+        <tr>
+          <td><div class="fb ts">{{ u.short_name }}</div><div class="tx tm">{{ u.name[:35] }}…</div></td>
+          <td class="tm ts">{{ u.city }}</td>
+          <td><span class="bdg b-bl">{{ u.programs|length }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

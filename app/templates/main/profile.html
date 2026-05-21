@@ -1,0 +1,73 @@
+{% extends 'base.html' %}{% block title %}Профиль{% endblock %}
+{% block content %}
+<div class="pg-title">Профиль абитуриента</div>
+<div class="pg-sub">Личные данные и настройки аккаунта</div>
+<div style="display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start">
+  <div class="card">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));
+                  display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;margin:0 auto 10px">
+        {{ (current_user.full_name or current_user.email)[0].upper() }}
+      </div>
+      <div style="font-size:15px;font-weight:700">{{ current_user.full_name or 'Абитуриент' }}</div>
+      <div class="ts tm">{{ current_user.email }}</div>
+      <span class="bdg {% if current_user.is_admin %}b-pu{% else %}b-bl{% endif %}" style="margin-top:7px">
+        {{ 'Администратор' if current_user.is_admin else 'Абитуриент' }}
+      </span>
+    </div>
+    <form method="POST">
+      <div class="fg"><label class="fl">ФИО</label><input class="fc" type="text" name="full_name" value="{{ current_user.full_name or '' }}" placeholder="Иванов Иван Иванович"></div>
+      <div class="fg"><label class="fl">Email</label><input class="fc" value="{{ current_user.email }}" disabled style="opacity:.5"></div>
+      <div class="fg"><label class="fl">Телефон</label><input class="fc" type="text" name="phone" value="{{ current_user.phone or '' }}" placeholder="+7 (999) 000-00-00"></div>
+      <hr class="dv">
+      <div class="fg"><label class="fl">Новый пароль</label><input class="fc" type="password" name="new_password" placeholder="Оставьте пустым, чтобы не менять"></div>
+      <button type="submit" class="btn btn-p btn-w">Сохранить изменения</button>
+    </form>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="card"><div class="card-title">Статистика</div>
+      <div class="g3" style="gap:10px">
+        <div style="text-align:center;padding:14px;background:var(--surface2);border-radius:8px">
+          <div class="fm fb" style="font-size:26px;color:var(--accent)">{{ current_user.exam_results|length }}</div>
+          <div class="tx td">предметов ЕГЭ</div></div>
+        <div style="text-align:center;padding:14px;background:var(--surface2);border-radius:8px">
+          <div class="fm fb" style="font-size:26px;color:var(--green)">{{ current_user.applications|length }}</div>
+          <div class="tx td">заявлений</div></div>
+        <div style="text-align:center;padding:14px;background:var(--surface2);border-radius:8px">
+          <div class="fm fb" style="font-size:26px;color:var(--yellow)">{{ current_user.total_exam_score }}</div>
+          <div class="tx td">сумма баллов</div></div>
+      </div>
+    </div>
+    {% if current_user.exam_results %}
+    <div class="card"><div class="card-title">Результаты ЕГЭ</div>
+      <table class="tbl">
+        <thead><tr><th>Предмет</th><th>Балл</th><th>Уровень</th></tr></thead>
+        <tbody>
+        {% for r in current_user.exam_results %}
+        <tr>
+          <td>{{ r.subject }}</td>
+          <td class="fm fb">{{ r.score }}</td>
+          <td>{% if r.score>=90 %}<span class="bdg b-gr">Отлично</span>
+            {% elif r.score>=70 %}<span class="bdg b-bl">Хорошо</span>
+            {% elif r.score>=50 %}<span class="bdg b-ye">Удовл.</span>
+            {% else %}<span class="bdg b-rd">Низкий</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <a href="{{ url_for('main.calc') }}" class="btn btn-s btn-sm mt-3">Редактировать баллы</a>
+    </div>
+    {% endif %}
+    <div class="card"><div class="card-title">REST API</div>
+      <p class="ts tm mb-3">Доступ к данным через JSON API:</p>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        {% for ep in [('/api/v1/me','Мои данные'),('/api/v1/me/applications','Мои заявления'),('/api/v1/deadlines?mine=1','Мои сроки'),('/api/v1/programs','Все программы')] %}
+        <a href="{{ ep[0] }}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:6px;text-decoration:none;color:var(--text2);font-family:var(--mono);font-size:12px">
+          <span style="color:var(--green)">GET</span> {{ ep[0] }} <span style="color:var(--text3);margin-left:auto">{{ ep[1] }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
