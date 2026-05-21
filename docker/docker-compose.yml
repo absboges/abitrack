@@ -10,7 +10,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: abitrack_web
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
       - FLASK_ENV=development
       - SECRET_KEY=change-me-in-production
