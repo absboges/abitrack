@@ -157,10 +157,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
         <span class="ic">⚙</span> Администрирование
       </a>
       {% endif %}
-      <div class="sb-section" style="margin-top:auto">API</div>
-      <a href="{{ url_for('api.api_me') }}" class="sb-link" target="_blank">
-        <span class="ic">🔌</span> REST API ↗
-      </a>
     </nav>
     <div class="sb-user">
       <div class="u-av">{{ (current_user.full_name or current_user.email)[0].upper() }}</div>

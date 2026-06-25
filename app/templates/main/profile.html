@@ -58,16 +58,6 @@
       <a href="{{ url_for('main.calc') }}" class="btn btn-s btn-sm mt-3">Редактировать баллы</a>
     </div>
     {% endif %}
-    <div class="card"><div class="card-title">REST API</div>
-      <p class="ts tm mb-3">Доступ к данным через JSON API:</p>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        {% for ep in [('/api/v1/me','Мои данные'),('/api/v1/me/applications','Мои заявления'),('/api/v1/deadlines?mine=1','Мои сроки'),('/api/v1/programs','Все программы')] %}
-        <a href="{{ ep[0] }}" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:6px;text-decoration:none;color:var(--text2);font-family:var(--mono);font-size:12px">
-          <span style="color:var(--green)">GET</span> {{ ep[0] }} <span style="color:var(--text3);margin-left:auto">{{ ep[1] }}</span>
-        </a>
-        {% endfor %}
-      </div>
-    </div>
   </div>
 </div>
 {% endblock %}
